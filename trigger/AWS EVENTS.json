@@ -1,0 +1,27 @@
+{
+	"name": "AWS EVENTS",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "PL_CopyBlobToSQL_Incremental_V1",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"DATA_PATH": "RAW/INVOICES/AWS"
+				}
+			}
+		],
+		"type": "BlobEventsTrigger",
+		"typeProperties": {
+			"blobPathBeginsWith": "/test1/blobs/RAW/INVOICES/AWS",
+			"ignoreEmptyBlobs": true,
+			"scope": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws",
+			"events": [
+				"Microsoft.Storage.BlobCreated"
+			]
+		}
+	}
+}

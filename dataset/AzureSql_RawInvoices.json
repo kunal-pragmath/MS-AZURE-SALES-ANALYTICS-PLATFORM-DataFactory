@@ -1,0 +1,184 @@
+{
+	"name": "AzureSql_RawInvoices",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase1",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Datum",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Racun",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Kupac",
+				"type": "nvarchar"
+			},
+			{
+				"name": "NazivKup",
+				"type": "nvarchar"
+			},
+			{
+				"name": "TipKupca",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ID_broj",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Brend",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Naziv",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Jm",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Izlaz",
+				"type": "nvarchar"
+			},
+			{
+				"name": "cena",
+				"type": "nvarchar"
+			},
+			{
+				"name": "RAB%",
+				"type": "nvarchar"
+			},
+			{
+				"name": "PDV%",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Iznos",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Vrednost",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Porez",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Rabat",
+				"type": "nvarchar"
+			},
+			{
+				"name": "magacinskaVred",
+				"type": "nvarchar"
+			},
+			{
+				"name": "nabavnaVred",
+				"type": "nvarchar"
+			},
+			{
+				"name": "RUC",
+				"type": "nvarchar"
+			},
+			{
+				"name": "profit",
+				"type": "nvarchar"
+			},
+			{
+				"name": "familija",
+				"type": "nvarchar"
+			},
+			{
+				"name": "grupa",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Tip",
+				"type": "nvarchar"
+			},
+			{
+				"name": "komercijalista",
+				"type": "nvarchar"
+			},
+			{
+				"name": "NacPlac",
+				"type": "nvarchar"
+			},
+			{
+				"name": "DPO",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Valuta",
+				"type": "nvarchar"
+			},
+			{
+				"name": "IznosRacuna",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Ugovor",
+				"type": "nvarchar"
+			},
+			{
+				"name": "minRok",
+				"type": "nvarchar"
+			},
+			{
+				"name": "maxProc",
+				"type": "nvarchar"
+			},
+			{
+				"name": "maxCassaSaPDV",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ValutaCassaSaTol",
+				"type": "nvarchar"
+			},
+			{
+				"name": "VrstaDokumentaKif",
+				"type": "nvarchar"
+			},
+			{
+				"name": "SifraO",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Isporuka",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Region",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Mesto",
+				"type": "nvarchar"
+			},
+			{
+				"name": "RawFileName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "LastUpdatedAt",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "raw_invoices"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

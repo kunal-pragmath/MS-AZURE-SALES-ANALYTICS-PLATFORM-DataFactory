@@ -1,0 +1,9 @@
+{
+	"name": "test-factory-jlxxam",
+	"properties": {
+		"globalConfigurations": {
+			"PipelineBillingEnabled": "true"
+		}
+	},
+	"location": "centralindia"
+}
