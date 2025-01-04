@@ -1,0 +1,1050 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "test-factory-jlxxam"
+		},
+		"AzureBlobStorage1_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorage1'"
+		},
+		"AzureSqlDatabase1_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'AzureSqlDatabase1'"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "test-server-jlxxam.database.windows.net"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "test1"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "adminuser"
+		},
+		"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
+			"type": "string",
+			"defaultValue": "RAW/INVOICES/AWS"
+		},
+		"AWS EVENTS_properties_typeProperties_scope": {
+			"type": "string",
+			"defaultValue": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBlobStorage1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureBlobStorage1_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabase1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('AzureSqlDatabase1_properties_typeProperties_server')]",
+					"database": "[parameters('AzureSqlDatabase1_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('AzureSqlDatabase1_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('AzureSqlDatabase1_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSql_PipelineMetadata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "PipelineName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastRunTimestamp",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "PipelineRunMetadata"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSql_RawInvoices')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Datum",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Racun",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Kupac",
+						"type": "nvarchar"
+					},
+					{
+						"name": "NazivKup",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TipKupca",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ID_broj",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Brend",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Naziv",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Jm",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Izlaz",
+						"type": "nvarchar"
+					},
+					{
+						"name": "cena",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RAB%",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PDV%",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Iznos",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Vrednost",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Porez",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Rabat",
+						"type": "nvarchar"
+					},
+					{
+						"name": "magacinskaVred",
+						"type": "nvarchar"
+					},
+					{
+						"name": "nabavnaVred",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUC",
+						"type": "nvarchar"
+					},
+					{
+						"name": "profit",
+						"type": "nvarchar"
+					},
+					{
+						"name": "familija",
+						"type": "nvarchar"
+					},
+					{
+						"name": "grupa",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Tip",
+						"type": "nvarchar"
+					},
+					{
+						"name": "komercijalista",
+						"type": "nvarchar"
+					},
+					{
+						"name": "NacPlac",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DPO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Valuta",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IznosRacuna",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Ugovor",
+						"type": "nvarchar"
+					},
+					{
+						"name": "minRok",
+						"type": "nvarchar"
+					},
+					{
+						"name": "maxProc",
+						"type": "nvarchar"
+					},
+					{
+						"name": "maxCassaSaPDV",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ValutaCassaSaTol",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VrstaDokumentaKif",
+						"type": "nvarchar"
+					},
+					{
+						"name": "SifraO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Isporuka",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Mesto",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RawFileName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastUpdatedAt",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "raw_invoices"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Blob_RawInvoices')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"directory": {
+						"type": "string",
+						"defaultValue": "RAW/INVOICES/AWS"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": {
+							"value": "@dataset().directory",
+							"type": "Expression"
+						},
+						"container": "test1"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "Datum",
+						"type": "String"
+					},
+					{
+						"name": "Racun",
+						"type": "String"
+					},
+					{
+						"name": "Kupac",
+						"type": "String"
+					},
+					{
+						"name": "NazivKup",
+						"type": "String"
+					},
+					{
+						"name": "TipKupca",
+						"type": "String"
+					},
+					{
+						"name": "ID_broj",
+						"type": "String"
+					},
+					{
+						"name": "Brend",
+						"type": "String"
+					},
+					{
+						"name": "Naziv",
+						"type": "String"
+					},
+					{
+						"name": "Jm",
+						"type": "String"
+					},
+					{
+						"name": "Izlaz",
+						"type": "String"
+					},
+					{
+						"name": "cena",
+						"type": "String"
+					},
+					{
+						"name": "RAB%",
+						"type": "String"
+					},
+					{
+						"name": "PDV%",
+						"type": "String"
+					},
+					{
+						"name": "Iznos",
+						"type": "String"
+					},
+					{
+						"name": "Vrednost",
+						"type": "String"
+					},
+					{
+						"name": "Porez",
+						"type": "String"
+					},
+					{
+						"name": "Rabat",
+						"type": "String"
+					},
+					{
+						"name": "magacinskaVred",
+						"type": "String"
+					},
+					{
+						"name": "nabavnaVred",
+						"type": "String"
+					},
+					{
+						"name": "RUC",
+						"type": "String"
+					},
+					{
+						"name": "profit",
+						"type": "String"
+					},
+					{
+						"name": "familija",
+						"type": "String"
+					},
+					{
+						"name": "grupa",
+						"type": "String"
+					},
+					{
+						"name": "Tip",
+						"type": "String"
+					},
+					{
+						"name": "komercijalista",
+						"type": "String"
+					},
+					{
+						"name": "NacPlac",
+						"type": "String"
+					},
+					{
+						"name": "DPO",
+						"type": "String"
+					},
+					{
+						"name": "Valuta",
+						"type": "String"
+					},
+					{
+						"name": "IznosRacuna",
+						"type": "String"
+					},
+					{
+						"name": "Ugovor",
+						"type": "String"
+					},
+					{
+						"name": "minRok",
+						"type": "String"
+					},
+					{
+						"name": "maxProc",
+						"type": "String"
+					},
+					{
+						"name": "maxCassaSaPDV",
+						"type": "String"
+					},
+					{
+						"name": "ValutaCassaSaTol",
+						"type": "String"
+					},
+					{
+						"name": "VrstaDokumentaKif",
+						"type": "String"
+					},
+					{
+						"name": "SifraO",
+						"type": "String"
+					},
+					{
+						"name": "Isporuka",
+						"type": "String"
+					},
+					{
+						"name": "Region",
+						"type": "String"
+					},
+					{
+						"name": "Mesto",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_CopyBlobToSQL_Incremental_V0')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup LastPipelineRun",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT TOP 1 LastRunTimestamp\nFROM (\n    SELECT LastRunTimestamp\n    FROM [dbo].[PipelineRunMetadata]\n    WHERE PipelineName = '@{pipeline().Pipeline}'\n    \n    UNION ALL\n    \n    SELECT CAST('1900-01-01T00:00:00' AS DATETIME) AS LastRunTimestamp\n) AS CombinedResults\nORDER BY LastRunTimestamp DESC;\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzureSql_PipelineMetadata",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LastPipelineRun",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup LastPipelineRun",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "LastRun",
+							"value": {
+								"value": "@activity('Lookup LastPipelineRun').output.firstRow.LastRunTimestamp",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "LastPipelineRun",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Blob_RawInvoices",
+								"type": "DatasetReference",
+								"parameters": {
+									"directory": {
+										"value": "@pipeline().parameters.DATA_PATH",
+										"type": "Expression"
+									}
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"modifiedDatetimeStart": {
+									"value": "@variables('LastRun')",
+									"type": "Expression"
+								},
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata1').output.childItems",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"additionalColumns": [
+												{
+													"name": "Filepath",
+													"value": {
+														"value": "@pipeline().parameters.DATA_PATH",
+														"type": "Expression"
+													}
+												},
+												{
+													"name": "Filename",
+													"value": {
+														"value": "@item().name",
+														"type": "Expression"
+													}
+												},
+												{
+													"name": "Loadtime",
+													"value": {
+														"value": "@utcNow()",
+														"type": "Expression"
+													}
+												}
+											],
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"wildcardFolderPath": {
+													"value": "@pipeline().parameters.DATA_PATH",
+													"type": "Expression"
+												},
+												"wildcardFileName": {
+													"value": "@item().name",
+													"type": "Expression"
+												},
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate"
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "Blob_RawInvoices",
+											"type": "DatasetReference",
+											"parameters": {
+												"directory": {
+													"value": "@pipeline().parameters.DATA_PATH",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AzureSql_RawInvoices",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Stored procedure1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[UpdateLastRunTimestamp]",
+							"storedProcedureParameters": {
+								"LastRunTimestamp": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"DATA_PATH": {
+						"type": "string",
+						"defaultValue": "RAW/INVOICES/AWS"
+					}
+				},
+				"variables": {
+					"LastRun": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-01-03T13:39:25Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSql_PipelineMetadata')]",
+				"[concat(variables('factoryId'), '/datasets/Blob_RawInvoices')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]",
+				"[concat(variables('factoryId'), '/datasets/AzureSql_RawInvoices')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_CopyBlobToSQL_Incremental_V1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup LastPipelineRun",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT TOP 1 LastRunTimestamp\nFROM (\n    SELECT LastRunTimestamp\n    FROM [dbo].[PipelineRunMetadata]\n    WHERE PipelineName = '@{pipeline().Pipeline}'\n    \n    UNION ALL\n    \n    SELECT CAST('1900-01-01T00:00:00' AS DATETIME) AS LastRunTimestamp\n) AS CombinedResults\nORDER BY LastRunTimestamp DESC;\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzureSql_PipelineMetadata",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Set LastPipelineRun Variable",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup LastPipelineRun",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "LastRun",
+							"value": {
+								"value": "@activity('Lookup LastPipelineRun').output.firstRow.LastRunTimestamp",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Copy new files from blob to DB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set LastPipelineRun Variable",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"additionalColumns": [
+									{
+										"name": "RootDirectory",
+										"value": {
+											"value": "@pipeline().parameters.DATA_PATH",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "FilePath",
+										"value": "$$FILEPATH"
+									},
+									{
+										"name": "Loadtime",
+										"value": {
+											"value": "@utcNow()",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"modifiedDatetimeStart": {
+										"value": "@variables('LastRun')",
+										"type": "Expression"
+									},
+									"wildcardFolderPath": {
+										"value": "@pipeline().parameters.DATA_PATH",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Blob_RawInvoices",
+								"type": "DatasetReference",
+								"parameters": {
+									"directory": {
+										"value": "@pipeline().parameters.DATA_PATH",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSql_RawInvoices",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Check if new files are written to db",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Copy new files from blob to DB",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(activity('Copy new files from blob to DB').output.dataWritten,0)\n",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Update pipeline run time in db",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateLastRunTimestamp]",
+										"storedProcedureParameters": {
+											"LastRunTimestamp": {
+												"value": {
+													"value": "@utcNow()",
+													"type": "Expression"
+												},
+												"type": "Datetime"
+											},
+											"PipelineName": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSqlDatabase1",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"DATA_PATH": {
+						"type": "string",
+						"defaultValue": "RAW/INVOICES/AWS"
+					}
+				},
+				"variables": {
+					"LastRun": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-01-04T07:07:01Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSql_PipelineMetadata')]",
+				"[concat(variables('factoryId'), '/datasets/Blob_RawInvoices')]",
+				"[concat(variables('factoryId'), '/datasets/AzureSql_RawInvoices')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AWS EVENTS')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_CopyBlobToSQL_Incremental_V1",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"DATA_PATH": "[parameters('AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH')]"
+						}
+					}
+				],
+				"type": "BlobEventsTrigger",
+				"typeProperties": {
+					"blobPathBeginsWith": "/test1/blobs/RAW/INVOICES/AWS",
+					"ignoreEmptyBlobs": true,
+					"scope": "[parameters('AWS EVENTS_properties_typeProperties_scope')]",
+					"events": [
+						"Microsoft.Storage.BlobCreated"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_CopyBlobToSQL_Incremental_V1')]"
+			]
+		}
+	]
+}
