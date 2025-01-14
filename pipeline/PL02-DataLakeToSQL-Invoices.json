@@ -152,7 +152,7 @@
 					},
 					"ifTrueActivities": [
 						{
-							"name": "Update pipeline log",
+							"name": "Update Pipeline Success",
 							"type": "SqlServerStoredProcedure",
 							"dependsOn": [],
 							"policy": {
@@ -184,6 +184,13 @@
 										},
 										"type": "String"
 									},
+									"PipelineRunId": {
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
 									"StartTime": {
 										"value": {
 											"value": "@pipeline().TriggerTime",
@@ -206,7 +213,7 @@
 				}
 			},
 			{
-				"name": "Update pipeline log_copy1",
+				"name": "Update Pipeline Failure -1",
 				"type": "SqlServerStoredProcedure",
 				"dependsOn": [
 					{
@@ -236,7 +243,7 @@
 						},
 						"ErrorMessage": {
 							"value": {
-								"value": "@concat(\n    'Lookup LastPipelineRun: ',\n    activity('Lookup LastPipelineRun').error.message\n    )\n",
+								"value": "@concat(\n    'Lookup Activity: ',\n    activity('Lookup LastPipelineRun').error.message\n    )\n\n",
 								"type": "Expression"
 							},
 							"type": "String"
@@ -244,6 +251,13 @@
 						"PipelineName": {
 							"value": {
 								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineRunId": {
+							"value": {
+								"value": "@pipeline().RunId",
 								"type": "Expression"
 							},
 							"type": "String"
@@ -267,7 +281,7 @@
 				}
 			},
 			{
-				"name": "Update pipeline log_copy1_copy1",
+				"name": "Update Pipeline Failure - 2",
 				"type": "SqlServerStoredProcedure",
 				"dependsOn": [
 					{
@@ -309,6 +323,13 @@
 							},
 							"type": "String"
 						},
+						"PipelineRunId": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
 						"StartTime": {
 							"value": {
 								"value": "@pipeline().TriggerTime",
@@ -331,7 +352,7 @@
 		"parameters": {
 			"root": {
 				"type": "string",
-				"defaultValue": "raw/invoices"
+				"defaultValue": "raw/invoices/aws"
 			}
 		},
 		"annotations": [],
