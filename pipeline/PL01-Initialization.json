@@ -1,0 +1,447 @@
+{
+	"name": "PL01-Initialization",
+	"properties": {
+		"description": "This pipeline is to set up database tables and stored procedures that will track pipeline runs and ingested data",
+		"activities": [
+			{
+				"name": "PipelineRunLog",
+				"description": "Creates PipelineRunLog table",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'PipelineRunLog')\nBEGIN\n    CREATE TABLE PipelineRunLog (\n    RunID INT IDENTITY(1,1) PRIMARY KEY,      -- Unique identifier for each run\n    PipelineName NVARCHAR(255) NOT NULL,     -- Name of the pipeline\n    StartTime DATETIME NOT NULL,             -- Start time of the pipeline run\n    EndTime DATETIME,                        -- End time of the pipeline run\n    Status NVARCHAR(50),                     -- Status: e.g., 'Running', 'Success', 'Failed'\n    ErrorMessage NVARCHAR(MAX)               -- Error message if pipeline fails\n);\nEND;\n\n\n\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "FileMetadata",
+				"description": "Creates FileMetadata table",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "AppendPipelineRunLog",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'FileMetadata')\nBEGIN\n    CREATE TABLE FileMetadata (\n    FileID INT IDENTITY(1,1) PRIMARY KEY,\n    FileName NVARCHAR(255) NOT NULL,\n    LastModified DATETIME NOT NULL,\n    IngestionStatus NVARCHAR(50),\n    IngestedOn DATETIME,\n    ErrorMessage NVARCHAR(MAX),\n    RunID INT,                               -- Foreign key to PipelineRunLog\n    CONSTRAINT FK_RunID FOREIGN KEY (RunID) REFERENCES PipelineRunLog (RunID)\n);\nEND;\n\n\n\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "AppendPipelineRunLog",
+				"description": "Creates stored procedure AppendPipelineRunLog",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "PipelineRunLog",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "IF OBJECT_ID('dbo.AppendPipelineRunLog', 'P') IS NOT NULL\nBEGIN\n    DROP PROCEDURE dbo.AppendPipelineRunLog;\nEND\n\n\nIF OBJECT_ID('dbo.AppendPipelineRunLog', 'P') IS NULL\nBEGIN\n    EXEC('CREATE PROCEDURE dbo.AppendPipelineRunLog AS BEGIN PRINT ''Placeholder Procedure'' END;');\nEND;\n\nEXEC('\nALTER PROCEDURE dbo.AppendPipelineRunLog\n    @PipelineName NVARCHAR(255),\n    @StartTime DATETIME,\n    @EndTime DATETIME = NULL,\n    @Status NVARCHAR(50),\n    @ErrorMessage NVARCHAR(MAX) = NULL\nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    -- Always insert a new record into the PipelineRunLog table\n    INSERT INTO [dbo].[PipelineRunLog] (PipelineName, StartTime, EndTime, Status, ErrorMessage)\n    VALUES (@PipelineName, @StartTime, @EndTime, @Status, @ErrorMessage);\nEND\n');\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "UpdateFileMetadata",
+				"description": "Creates stored procedure UpdateFileMetadata",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "FileMetadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "IF OBJECT_ID('dbo.UpdateFileMetadata', 'P') IS NOT NULL\nBEGIN\n    DROP PROCEDURE dbo.UpdateFileMetadata;\nEND\n\n\nIF OBJECT_ID('dbo.UpdateFileMetadata', 'P') IS NULL\nBEGIN\n    EXEC('CREATE PROCEDURE dbo.UpdateFileMetadata AS BEGIN PRINT ''Placeholder Procedure'' END;');\nEND;\n\nEXEC('\nALTER PROCEDURE UpdateFileMetadata\n    @FileName NVARCHAR(255),                \n    @LastModified DATETIME,                 \n    @IngestionStatus NVARCHAR(50),          \n    @IngestedOn DATETIME = NULL,            \n    @ErrorMessage NVARCHAR(MAX) = NULL,     \n    @RunID INT                              \nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    -- Update the existing file record\n    UPDATE FileMetadata\n    SET \n        LastModified = @LastModified,\n        IngestionStatus = @IngestionStatus,\n        IngestedOn = @IngestedOn,\n        ErrorMessage = @ErrorMessage,\n        RunID = @RunID\n    WHERE FileName = @FileName;\nEND;\n');\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Update pipeline log_copy1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "PipelineRunLog",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[AppendPipelineRunLog]",
+					"storedProcedureParameters": {
+						"EndTime": {
+							"value": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"ErrorMessage": {
+							"value": {
+								"value": "@concat(\n    'Create PipelineRunLog Table: ',\n    activity('PipelineRunLog').error.message\n    )\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"StartTime": {
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"Status": {
+							"value": "Failed",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Update pipeline log_copy1_copy1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "AppendPipelineRunLog",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[AppendPipelineRunLog]",
+					"storedProcedureParameters": {
+						"EndTime": {
+							"value": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"ErrorMessage": {
+							"value": {
+								"value": "@concat(\n    'Create AppendPipelineRunLog Procedure: ',\n    activity('AppendPipelineRunLog').error.message\n    )\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"StartTime": {
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"Status": {
+							"value": "Failed",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Update pipeline log_copy1_copy1_copy1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "FileMetadata",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[AppendPipelineRunLog]",
+					"storedProcedureParameters": {
+						"EndTime": {
+							"value": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"ErrorMessage": {
+							"value": {
+								"value": "@concat(\n    'Create FileMetadata Table: ',\n    activity('FileMetadata').error.message\n    )\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"StartTime": {
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"Status": {
+							"value": "Failed",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Update pipeline log_copy1_copy1_copy1_copy1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "UpdateFileMetadata",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[AppendPipelineRunLog]",
+					"storedProcedureParameters": {
+						"EndTime": {
+							"value": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"ErrorMessage": {
+							"value": {
+								"value": "@concat(\n    'Create UpdateFileMetadata Procedure: ',\n    activity('UpdateFileMetadata').error.message\n    )\n",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"StartTime": {
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"Status": {
+							"value": "Failed",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Update pipeline log",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "UpdateFileMetadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[AppendPipelineRunLog]",
+					"storedProcedureParameters": {
+						"EndTime": {
+							"value": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"ErrorMessage": {
+							"value": null,
+							"type": "String"
+						},
+						"PipelineName": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"StartTime": {
+							"value": {
+								"value": "@pipeline().TriggerTime",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"Status": {
+							"value": "Succeeded",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"LastRun": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-01-14T12:47:44Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

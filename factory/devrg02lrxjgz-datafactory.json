@@ -1,0 +1,9 @@
+{
+	"name": "devrg02lrxjgz-datafactory",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "1aceffbd-6b67-4da1-bdcf-f823047c832f",
+		"tenantId": "7235900a-ec47-4b0b-bd3e-813fd774ed0f"
+	}
+}

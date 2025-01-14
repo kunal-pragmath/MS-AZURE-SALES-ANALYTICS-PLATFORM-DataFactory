@@ -1,0 +1,190 @@
+{
+	"name": "DataLake_Invoices_CSV",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage1",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"root": {
+				"type": "string",
+				"defaultValue": "raw/invoices"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@dataset().root",
+					"type": "Expression"
+				},
+				"fileSystem": "data"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "Datum",
+				"type": "String"
+			},
+			{
+				"name": "Racun",
+				"type": "String"
+			},
+			{
+				"name": "Kupac",
+				"type": "String"
+			},
+			{
+				"name": "NazivKup",
+				"type": "String"
+			},
+			{
+				"name": "TipKupca",
+				"type": "String"
+			},
+			{
+				"name": "ID_broj",
+				"type": "String"
+			},
+			{
+				"name": "Brend",
+				"type": "String"
+			},
+			{
+				"name": "Naziv",
+				"type": "String"
+			},
+			{
+				"name": "Jm",
+				"type": "String"
+			},
+			{
+				"name": "Izlaz",
+				"type": "String"
+			},
+			{
+				"name": "cena",
+				"type": "String"
+			},
+			{
+				"name": "RAB%",
+				"type": "String"
+			},
+			{
+				"name": "PDV%",
+				"type": "String"
+			},
+			{
+				"name": "Iznos",
+				"type": "String"
+			},
+			{
+				"name": "Vrednost",
+				"type": "String"
+			},
+			{
+				"name": "Porez",
+				"type": "String"
+			},
+			{
+				"name": "Rabat",
+				"type": "String"
+			},
+			{
+				"name": "magacinskaVred",
+				"type": "String"
+			},
+			{
+				"name": "nabavnaVred",
+				"type": "String"
+			},
+			{
+				"name": "RUC",
+				"type": "String"
+			},
+			{
+				"name": "profit",
+				"type": "String"
+			},
+			{
+				"name": "familija",
+				"type": "String"
+			},
+			{
+				"name": "grupa",
+				"type": "String"
+			},
+			{
+				"name": "Tip",
+				"type": "String"
+			},
+			{
+				"name": "komercijalista",
+				"type": "String"
+			},
+			{
+				"name": "NacPlac",
+				"type": "String"
+			},
+			{
+				"name": "DPO",
+				"type": "String"
+			},
+			{
+				"name": "Valuta",
+				"type": "String"
+			},
+			{
+				"name": "IznosRacuna",
+				"type": "String"
+			},
+			{
+				"name": "Ugovor",
+				"type": "String"
+			},
+			{
+				"name": "minRok",
+				"type": "String"
+			},
+			{
+				"name": "maxProc",
+				"type": "String"
+			},
+			{
+				"name": "maxCassaSaPDV",
+				"type": "String"
+			},
+			{
+				"name": "ValutaCassaSaTol",
+				"type": "String"
+			},
+			{
+				"name": "VrstaDokumentaKif",
+				"type": "String"
+			},
+			{
+				"name": "SifraO",
+				"type": "String"
+			},
+			{
+				"name": "Isporuka",
+				"type": "String"
+			},
+			{
+				"name": "Region",
+				"type": "String"
+			},
+			{
+				"name": "Mesto",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
