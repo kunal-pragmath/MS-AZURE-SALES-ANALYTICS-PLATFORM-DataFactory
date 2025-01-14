@@ -1,0 +1,1850 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "devrg02lrxjgz-datafactory"
+		},
+		"AzureBlobStorage1_properties_typeProperties_serviceEndpoint": {
+			"type": "string",
+			"defaultValue": "https://devrg02lrxjgz.blob.core.windows.net/"
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://devrg02lrxjgz.dfs.core.windows.net/"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "devrg02lrxjgz-sqlserver.database.windows.net"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "Database1"
+		},
+		"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
+			"type": "string",
+			"defaultValue": "RAW/INVOICES/AWS"
+		},
+		"AWS EVENTS_properties_typeProperties_scope": {
+			"type": "string",
+			"defaultValue": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/PL01-Initialization')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "This pipeline is to set up database tables and stored procedures that will track pipeline runs and ingested data",
+				"activities": [
+					{
+						"name": "PipelineRunLog",
+						"description": "Creates PipelineRunLog table",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'PipelineRunLog')\nBEGIN\n    CREATE TABLE PipelineRunLog (\n    RunID INT IDENTITY(1,1) PRIMARY KEY,      -- Unique identifier for each run\n    PipelineName NVARCHAR(255) NOT NULL,     -- Name of the pipeline\n    StartTime DATETIME NOT NULL,             -- Start time of the pipeline run\n    EndTime DATETIME,                        -- End time of the pipeline run\n    Status NVARCHAR(50),                     -- Status: e.g., 'Running', 'Success', 'Failed'\n    ErrorMessage NVARCHAR(MAX)               -- Error message if pipeline fails\n);\nEND;\n\n\n\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "FileMetadata",
+						"description": "Creates FileMetadata table",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "AppendPipelineRunLog",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'FileMetadata')\nBEGIN\n    CREATE TABLE FileMetadata (\n    FileID INT IDENTITY(1,1) PRIMARY KEY,\n    FileName NVARCHAR(255) NOT NULL,\n    LastModified DATETIME NOT NULL,\n    IngestionStatus NVARCHAR(50),\n    IngestedOn DATETIME,\n    ErrorMessage NVARCHAR(MAX),\n    RunID INT,                               -- Foreign key to PipelineRunLog\n    CONSTRAINT FK_RunID FOREIGN KEY (RunID) REFERENCES PipelineRunLog (RunID)\n);\nEND;\n\n\n\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "AppendPipelineRunLog",
+						"description": "Creates stored procedure AppendPipelineRunLog",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "PipelineRunLog",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF OBJECT_ID('dbo.AppendPipelineRunLog', 'P') IS NOT NULL\nBEGIN\n    DROP PROCEDURE dbo.AppendPipelineRunLog;\nEND\n\n\nIF OBJECT_ID('dbo.AppendPipelineRunLog', 'P') IS NULL\nBEGIN\n    EXEC('CREATE PROCEDURE dbo.AppendPipelineRunLog AS BEGIN PRINT ''Placeholder Procedure'' END;');\nEND;\n\nEXEC('\nALTER PROCEDURE dbo.AppendPipelineRunLog\n    @PipelineName NVARCHAR(255),\n    @StartTime DATETIME,\n    @EndTime DATETIME = NULL,\n    @Status NVARCHAR(50),\n    @ErrorMessage NVARCHAR(MAX) = NULL\nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    -- Always insert a new record into the PipelineRunLog table\n    INSERT INTO [dbo].[PipelineRunLog] (PipelineName, StartTime, EndTime, Status, ErrorMessage)\n    VALUES (@PipelineName, @StartTime, @EndTime, @Status, @ErrorMessage);\nEND\n');\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "UpdateFileMetadata",
+						"description": "Creates stored procedure UpdateFileMetadata",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "FileMetadata",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF OBJECT_ID('dbo.UpdateFileMetadata', 'P') IS NOT NULL\nBEGIN\n    DROP PROCEDURE dbo.UpdateFileMetadata;\nEND\n\n\nIF OBJECT_ID('dbo.UpdateFileMetadata', 'P') IS NULL\nBEGIN\n    EXEC('CREATE PROCEDURE dbo.UpdateFileMetadata AS BEGIN PRINT ''Placeholder Procedure'' END;');\nEND;\n\nEXEC('\nALTER PROCEDURE UpdateFileMetadata\n    @FileName NVARCHAR(255),                \n    @LastModified DATETIME,                 \n    @IngestionStatus NVARCHAR(50),          \n    @IngestedOn DATETIME = NULL,            \n    @ErrorMessage NVARCHAR(MAX) = NULL,     \n    @RunID INT                              \nAS\nBEGIN\n    SET NOCOUNT ON;\n\n    -- Update the existing file record\n    UPDATE FileMetadata\n    SET \n        LastModified = @LastModified,\n        IngestionStatus = @IngestionStatus,\n        IngestedOn = @IngestedOn,\n        ErrorMessage = @ErrorMessage,\n        RunID = @RunID\n    WHERE FileName = @FileName;\nEND;\n');\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Update pipeline log_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "PipelineRunLog",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": {
+										"value": "@concat(\n    'Create PipelineRunLog Table: ',\n    activity('PipelineRunLog').error.message\n    )\n",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Failed",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Update pipeline log_copy1_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "AppendPipelineRunLog",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": {
+										"value": "@concat(\n    'Create AppendPipelineRunLog Procedure: ',\n    activity('AppendPipelineRunLog').error.message\n    )\n",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Failed",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Update pipeline log_copy1_copy1_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "FileMetadata",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": {
+										"value": "@concat(\n    'Create FileMetadata Table: ',\n    activity('FileMetadata').error.message\n    )\n",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Failed",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Update pipeline log_copy1_copy1_copy1_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "UpdateFileMetadata",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": {
+										"value": "@concat(\n    'Create UpdateFileMetadata Procedure: ',\n    activity('UpdateFileMetadata').error.message\n    )\n",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Failed",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Update pipeline log",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "UpdateFileMetadata",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": null,
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Succeeded",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"LastRun": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-01-14T12:47:44Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL02-DataLakeToSQL-Invoices')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup LastPipelineRun",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT TOP 1 LastRunTimestamp\nFROM (\n    SELECT max(StartTime) AS LastRunTimestamp\n    FROM PipelineRunLog\n    WHERE PipelineName = '@{pipeline().Pipeline}'\n    \n    UNION ALL\n    \n    SELECT CAST('1900-01-01T00:00:00' AS DATETIME) AS LastRunTimestamp\n) AS CombinedResults\nORDER BY LastRunTimestamp DESC;\n\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzureSql_PipelineRunLog",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Copy files from DataLake to DB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Lookup LastPipelineRun",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"additionalColumns": [
+									{
+										"name": "RootDirectory",
+										"value": {
+											"value": "@pipeline().parameters.root",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "FilePath",
+										"value": "$$FILEPATH"
+									},
+									{
+										"name": "LoadTime",
+										"value": {
+											"value": "@utcNow()",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "PipelineRunID",
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"modifiedDatetimeStart": {
+										"value": "@activity('Lookup LastPipelineRun').output.firstRow.LastRunTimestamp",
+										"type": "Expression"
+									},
+									"wildcardFolderPath": {
+										"value": "@pipeline().parameters.root",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*.csv",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DataLake_Invoices_CSV",
+								"type": "DatasetReference",
+								"parameters": {
+									"root": {
+										"value": "@pipeline().parameters.root",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSql_RawInvoices",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Check if new files are written to db",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Copy files from DataLake to DB",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(activity('Copy files from DataLake to DB').output.dataWritten,0)\n",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Update pipeline log",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+										"storedProcedureParameters": {
+											"EndTime": {
+												"value": {
+													"value": "@utcNow()",
+													"type": "Expression"
+												},
+												"type": "Datetime"
+											},
+											"ErrorMessage": {
+												"value": null,
+												"type": "String"
+											},
+											"PipelineName": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"StartTime": {
+												"value": {
+													"value": "@pipeline().TriggerTime",
+													"type": "Expression"
+												},
+												"type": "Datetime"
+											},
+											"Status": {
+												"value": "Succeeded",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSqlDatabase1",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Update pipeline log_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Lookup LastPipelineRun",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": {
+										"value": "@concat(\n    'Lookup LastPipelineRun: ',\n    activity('Lookup LastPipelineRun').error.message\n    )\n",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Failed",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Update pipeline log_copy1_copy1",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Copy files from DataLake to DB",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[AppendPipelineRunLog]",
+							"storedProcedureParameters": {
+								"EndTime": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"ErrorMessage": {
+									"value": {
+										"value": "@concat(\n    'Copy Activity: ',\n    activity('Copy files from DataLake to DB').error.message\n    )\n\n",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"PipelineName": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"StartTime": {
+									"value": {
+										"value": "@pipeline().TriggerTime",
+										"type": "Expression"
+									},
+									"type": "Datetime"
+								},
+								"Status": {
+									"value": "Failed",
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase1",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"root": {
+						"type": "string",
+						"defaultValue": "raw/invoices"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-01-14T12:37:00Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSql_PipelineRunLog')]",
+				"[concat(variables('factoryId'), '/datasets/DataLake_Invoices_CSV')]",
+				"[concat(variables('factoryId'), '/datasets/AzureSql_RawInvoices')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_CopyBlobToSQL_Incremental_V1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup LastPipelineRun",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT TOP 1 LastRunTimestamp\nFROM (\n    SELECT LastRunTimestamp\n    FROM [dbo].[PipelineRunMetadata]\n    WHERE PipelineName = '@{pipeline().Pipeline}'\n    \n    UNION ALL\n    \n    SELECT CAST('1900-01-01T00:00:00' AS DATETIME) AS LastRunTimestamp\n) AS CombinedResults\nORDER BY LastRunTimestamp DESC;\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzureSql_PipelineMetadata",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Set LastPipelineRun Variable",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup LastPipelineRun",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "LastRun",
+							"value": {
+								"value": "@activity('Lookup LastPipelineRun').output.firstRow.LastRunTimestamp",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Copy new files from blob to DB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Set LastPipelineRun Variable",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"additionalColumns": [
+									{
+										"name": "RootDirectory",
+										"value": {
+											"value": "@pipeline().parameters.DATA_PATH",
+											"type": "Expression"
+										}
+									},
+									{
+										"name": "FilePath",
+										"value": "$$FILEPATH"
+									},
+									{
+										"name": "Loadtime",
+										"value": {
+											"value": "@utcNow()",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"modifiedDatetimeStart": {
+										"value": "@variables('LastRun')",
+										"type": "Expression"
+									},
+									"wildcardFolderPath": {
+										"value": "@pipeline().parameters.DATA_PATH",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Blob_RawInvoices",
+								"type": "DatasetReference",
+								"parameters": {
+									"directory": {
+										"value": "@pipeline().parameters.DATA_PATH",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSql_RawInvoices",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Check if new files are written to db",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Copy new files from blob to DB",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(activity('Copy new files from blob to DB').output.dataWritten,0)\n",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Update pipeline run time in db",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateLastRunTimestamp]",
+										"storedProcedureParameters": {
+											"LastRunTimestamp": {
+												"value": {
+													"value": "@utcNow()",
+													"type": "Expression"
+												},
+												"type": "Datetime"
+											},
+											"PipelineName": {
+												"value": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSqlDatabase1",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"DATA_PATH": {
+						"type": "string",
+						"defaultValue": "RAW/INVOICES/AWS"
+					}
+				},
+				"variables": {
+					"LastRun": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-01-04T07:07:01Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSql_PipelineMetadata')]",
+				"[concat(variables('factoryId'), '/datasets/Blob_RawInvoices')]",
+				"[concat(variables('factoryId'), '/datasets/AzureSql_RawInvoices')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSql_PipelineMetadata')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "PipelineName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastRunTimestamp",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "PipelineRunMetadata"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSql_PipelineRunLog')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "RunID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "PipelineName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "StartTime",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "EndTime",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "Status",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ErrorMessage",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "PipelineRunLog"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSql_RawInvoices')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Datum",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Racun",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Kupac",
+						"type": "nvarchar"
+					},
+					{
+						"name": "NazivKup",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TipKupca",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ID_broj",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Brend",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Naziv",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Jm",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Izlaz",
+						"type": "nvarchar"
+					},
+					{
+						"name": "cena",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RAB%",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PDV%",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Iznos",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Vrednost",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Porez",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Rabat",
+						"type": "nvarchar"
+					},
+					{
+						"name": "magacinskaVred",
+						"type": "nvarchar"
+					},
+					{
+						"name": "nabavnaVred",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RUC",
+						"type": "nvarchar"
+					},
+					{
+						"name": "profit",
+						"type": "nvarchar"
+					},
+					{
+						"name": "familija",
+						"type": "nvarchar"
+					},
+					{
+						"name": "grupa",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Tip",
+						"type": "nvarchar"
+					},
+					{
+						"name": "komercijalista",
+						"type": "nvarchar"
+					},
+					{
+						"name": "NacPlac",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DPO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Valuta",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IznosRacuna",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Ugovor",
+						"type": "nvarchar"
+					},
+					{
+						"name": "minRok",
+						"type": "nvarchar"
+					},
+					{
+						"name": "maxProc",
+						"type": "nvarchar"
+					},
+					{
+						"name": "maxCassaSaPDV",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ValutaCassaSaTol",
+						"type": "nvarchar"
+					},
+					{
+						"name": "VrstaDokumentaKif",
+						"type": "nvarchar"
+					},
+					{
+						"name": "SifraO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Isporuka",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Region",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Mesto",
+						"type": "nvarchar"
+					},
+					{
+						"name": "RawFileName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastUpdatedAt",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "raw_invoices"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Blob_RawInvoices')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"directory": {
+						"type": "string",
+						"defaultValue": "RAW/INVOICES/AWS"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": {
+							"value": "@dataset().directory",
+							"type": "Expression"
+						},
+						"container": "test1"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "Datum",
+						"type": "String"
+					},
+					{
+						"name": "Racun",
+						"type": "String"
+					},
+					{
+						"name": "Kupac",
+						"type": "String"
+					},
+					{
+						"name": "NazivKup",
+						"type": "String"
+					},
+					{
+						"name": "TipKupca",
+						"type": "String"
+					},
+					{
+						"name": "ID_broj",
+						"type": "String"
+					},
+					{
+						"name": "Brend",
+						"type": "String"
+					},
+					{
+						"name": "Naziv",
+						"type": "String"
+					},
+					{
+						"name": "Jm",
+						"type": "String"
+					},
+					{
+						"name": "Izlaz",
+						"type": "String"
+					},
+					{
+						"name": "cena",
+						"type": "String"
+					},
+					{
+						"name": "RAB%",
+						"type": "String"
+					},
+					{
+						"name": "PDV%",
+						"type": "String"
+					},
+					{
+						"name": "Iznos",
+						"type": "String"
+					},
+					{
+						"name": "Vrednost",
+						"type": "String"
+					},
+					{
+						"name": "Porez",
+						"type": "String"
+					},
+					{
+						"name": "Rabat",
+						"type": "String"
+					},
+					{
+						"name": "magacinskaVred",
+						"type": "String"
+					},
+					{
+						"name": "nabavnaVred",
+						"type": "String"
+					},
+					{
+						"name": "RUC",
+						"type": "String"
+					},
+					{
+						"name": "profit",
+						"type": "String"
+					},
+					{
+						"name": "familija",
+						"type": "String"
+					},
+					{
+						"name": "grupa",
+						"type": "String"
+					},
+					{
+						"name": "Tip",
+						"type": "String"
+					},
+					{
+						"name": "komercijalista",
+						"type": "String"
+					},
+					{
+						"name": "NacPlac",
+						"type": "String"
+					},
+					{
+						"name": "DPO",
+						"type": "String"
+					},
+					{
+						"name": "Valuta",
+						"type": "String"
+					},
+					{
+						"name": "IznosRacuna",
+						"type": "String"
+					},
+					{
+						"name": "Ugovor",
+						"type": "String"
+					},
+					{
+						"name": "minRok",
+						"type": "String"
+					},
+					{
+						"name": "maxProc",
+						"type": "String"
+					},
+					{
+						"name": "maxCassaSaPDV",
+						"type": "String"
+					},
+					{
+						"name": "ValutaCassaSaTol",
+						"type": "String"
+					},
+					{
+						"name": "VrstaDokumentaKif",
+						"type": "String"
+					},
+					{
+						"name": "SifraO",
+						"type": "String"
+					},
+					{
+						"name": "Isporuka",
+						"type": "String"
+					},
+					{
+						"name": "Region",
+						"type": "String"
+					},
+					{
+						"name": "Mesto",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLake_Invoices_CSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage1",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"root": {
+						"type": "string",
+						"defaultValue": "raw/invoices"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().root",
+							"type": "Expression"
+						},
+						"fileSystem": "data"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "Datum",
+						"type": "String"
+					},
+					{
+						"name": "Racun",
+						"type": "String"
+					},
+					{
+						"name": "Kupac",
+						"type": "String"
+					},
+					{
+						"name": "NazivKup",
+						"type": "String"
+					},
+					{
+						"name": "TipKupca",
+						"type": "String"
+					},
+					{
+						"name": "ID_broj",
+						"type": "String"
+					},
+					{
+						"name": "Brend",
+						"type": "String"
+					},
+					{
+						"name": "Naziv",
+						"type": "String"
+					},
+					{
+						"name": "Jm",
+						"type": "String"
+					},
+					{
+						"name": "Izlaz",
+						"type": "String"
+					},
+					{
+						"name": "cena",
+						"type": "String"
+					},
+					{
+						"name": "RAB%",
+						"type": "String"
+					},
+					{
+						"name": "PDV%",
+						"type": "String"
+					},
+					{
+						"name": "Iznos",
+						"type": "String"
+					},
+					{
+						"name": "Vrednost",
+						"type": "String"
+					},
+					{
+						"name": "Porez",
+						"type": "String"
+					},
+					{
+						"name": "Rabat",
+						"type": "String"
+					},
+					{
+						"name": "magacinskaVred",
+						"type": "String"
+					},
+					{
+						"name": "nabavnaVred",
+						"type": "String"
+					},
+					{
+						"name": "RUC",
+						"type": "String"
+					},
+					{
+						"name": "profit",
+						"type": "String"
+					},
+					{
+						"name": "familija",
+						"type": "String"
+					},
+					{
+						"name": "grupa",
+						"type": "String"
+					},
+					{
+						"name": "Tip",
+						"type": "String"
+					},
+					{
+						"name": "komercijalista",
+						"type": "String"
+					},
+					{
+						"name": "NacPlac",
+						"type": "String"
+					},
+					{
+						"name": "DPO",
+						"type": "String"
+					},
+					{
+						"name": "Valuta",
+						"type": "String"
+					},
+					{
+						"name": "IznosRacuna",
+						"type": "String"
+					},
+					{
+						"name": "Ugovor",
+						"type": "String"
+					},
+					{
+						"name": "minRok",
+						"type": "String"
+					},
+					{
+						"name": "maxProc",
+						"type": "String"
+					},
+					{
+						"name": "maxCassaSaPDV",
+						"type": "String"
+					},
+					{
+						"name": "ValutaCassaSaTol",
+						"type": "String"
+					},
+					{
+						"name": "VrstaDokumentaKif",
+						"type": "String"
+					},
+					{
+						"name": "SifraO",
+						"type": "String"
+					},
+					{
+						"name": "Isporuka",
+						"type": "String"
+					},
+					{
+						"name": "Region",
+						"type": "String"
+					},
+					{
+						"name": "Mesto",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBlobStorage1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"serviceEndpoint": "[parameters('AzureBlobStorage1_properties_typeProperties_serviceEndpoint')]",
+					"accountKind": "StorageV2"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabase1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('AzureSqlDatabase1_properties_typeProperties_server')]",
+					"database": "[parameters('AzureSqlDatabase1_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SystemAssignedManagedIdentity"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/6 Hourly Trigger')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL02-DataLakeToSQL-Invoices",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 6,
+						"startTime": "2025-01-14T12:49:00",
+						"timeZone": "India Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL02-DataLakeToSQL-Invoices')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AWS EVENTS')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_CopyBlobToSQL_Incremental_V1",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"DATA_PATH": "[parameters('AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH')]"
+						}
+					}
+				],
+				"type": "BlobEventsTrigger",
+				"typeProperties": {
+					"blobPathBeginsWith": "/test1/blobs/RAW/INVOICES/AWS",
+					"ignoreEmptyBlobs": true,
+					"scope": "[parameters('AWS EVENTS_properties_typeProperties_scope')]",
+					"events": [
+						"Microsoft.Storage.BlobCreated"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_CopyBlobToSQL_Incremental_V1')]"
+			]
+		}
+	]
+}

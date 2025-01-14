@@ -1,0 +1,33 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "devrg02lrxjgz-datafactory"
+		},
+		"AzureBlobStorage1_properties_typeProperties_serviceEndpoint": {
+			"value": "https://devrg02lrxjgz.blob.core.windows.net/"
+		},
+		"AzureDataLakeStorage1_properties_typeProperties_url": {
+			"value": "https://devrg02lrxjgz.dfs.core.windows.net/"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_server": {
+			"value": "devrg02lrxjgz-sqlserver.database.windows.net"
+		},
+		"AzureSqlDatabase1_properties_typeProperties_database": {
+			"value": "Database1"
+		},
+		"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
+			"value": "RAW/INVOICES/AWS"
+		},
+		"AWS EVENTS_properties_typeProperties_scope": {
+			"value": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
