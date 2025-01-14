@@ -23,14 +23,6 @@
 			"type": "string",
 			"defaultValue": "Database1"
 		},
-		"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
-			"type": "string",
-			"defaultValue": "RAW/INVOICES/AWS"
-		},
-		"AWS EVENTS_properties_typeProperties_scope": {
-			"type": "string",
-			"defaultValue": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws"
-		},
 		"containerUri": {
 			"type": "string",
 			"metadata": "URI to storage account containing linked ARM templates"
@@ -69,12 +61,6 @@
 					},
 					"AzureSqlDatabase1_properties_typeProperties_database": {
 						"value": "[parameters('AzureSqlDatabase1_properties_typeProperties_database')]"
-					},
-					"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
-						"value": "[parameters('AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH')]"
-					},
-					"AWS EVENTS_properties_typeProperties_scope": {
-						"value": "[parameters('AWS EVENTS_properties_typeProperties_scope')]"
 					}
 				}
 			},

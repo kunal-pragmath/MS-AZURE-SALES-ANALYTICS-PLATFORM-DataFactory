@@ -17,12 +17,6 @@
 		"AzureSqlDatabase1_properties_typeProperties_database": {
 			"value": "Database1"
 		},
-		"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
-			"value": "RAW/INVOICES/AWS"
-		},
-		"AWS EVENTS_properties_typeProperties_scope": {
-			"value": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws"
-		},
 		"containerUri": {
 			"value": ""
 		},

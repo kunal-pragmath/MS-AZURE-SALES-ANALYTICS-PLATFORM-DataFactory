@@ -22,14 +22,6 @@
 		"AzureSqlDatabase1_properties_typeProperties_database": {
 			"type": "string",
 			"defaultValue": "Database1"
-		},
-		"AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH": {
-			"type": "string",
-			"defaultValue": "RAW/INVOICES/AWS"
-		},
-		"AWS EVENTS_properties_typeProperties_scope": {
-			"type": "string",
-			"defaultValue": "/subscriptions/3bff39f0-4b22-44c6-9233-ba265683b0c9/resourceGroups/test_resource_group/providers/Microsoft.Storage/storageAccounts/teststoragejlxxamyywe3ws"
 		}
 	},
 	"variables": {
@@ -1812,38 +1804,6 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/PL02-DataLakeToSQL-Invoices')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AWS EVENTS')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "PL_CopyBlobToSQL_Incremental_V1",
-							"type": "PipelineReference"
-						},
-						"parameters": {
-							"DATA_PATH": "[parameters('AWS EVENTS_properties_PL_CopyBlobToSQL_Incremental_V1_parameters_DATA_PATH')]"
-						}
-					}
-				],
-				"type": "BlobEventsTrigger",
-				"typeProperties": {
-					"blobPathBeginsWith": "/test1/blobs/RAW/INVOICES/AWS",
-					"ignoreEmptyBlobs": true,
-					"scope": "[parameters('AWS EVENTS_properties_typeProperties_scope')]",
-					"events": [
-						"Microsoft.Storage.BlobCreated"
-					]
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/PL_CopyBlobToSQL_Incremental_V1')]"
 			]
 		}
 	]
