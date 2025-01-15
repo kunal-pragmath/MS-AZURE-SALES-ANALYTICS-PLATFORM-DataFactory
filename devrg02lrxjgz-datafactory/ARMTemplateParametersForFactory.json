@@ -16,6 +16,9 @@
 		},
 		"AzureSqlDatabase1_properties_typeProperties_database": {
 			"value": "Database1"
+		},
+		"6 Hourly Trigger_properties_PL02-DataLakeToSQL-Invoices_parameters_root": {
+			"value": "raw/invoices"
 		}
 	}
 }
