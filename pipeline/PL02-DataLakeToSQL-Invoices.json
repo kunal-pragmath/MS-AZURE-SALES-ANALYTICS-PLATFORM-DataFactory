@@ -18,7 +18,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "SELECT TOP 1 LastRunTimestamp\nFROM (\n    SELECT max(StartTime) AS LastRunTimestamp\n    FROM PipelineRunLog\n    WHERE PipelineName = '@{pipeline().Pipeline}'\n    \n    UNION ALL\n    \n    SELECT CAST('1900-01-01T00:00:00' AS DATETIME) AS LastRunTimestamp\n) AS CombinedResults\nORDER BY LastRunTimestamp DESC;\n\n\n",
+							"value": "SELECT TOP 1 LastRunTimestamp\nFROM (\n    SELECT max(StartTime) AS LastRunTimestamp\n    FROM PipelineRunLog\n    WHERE PipelineName = '@{pipeline().Pipeline}'\n    AND Status = 'Succeeded'\n    \n    UNION ALL\n    \n    SELECT CAST('1900-01-01T00:00:00' AS DATETIME) AS LastRunTimestamp\n) AS CombinedResults\nORDER BY LastRunTimestamp DESC;\n\n\n",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -134,7 +134,7 @@
 				]
 			},
 			{
-				"name": "Check if new files are written to db",
+				"name": "Update Pipeline Success",
 				"type": "IfCondition",
 				"dependsOn": [
 					{
@@ -152,7 +152,7 @@
 					},
 					"ifTrueActivities": [
 						{
-							"name": "Update Pipeline Success",
+							"name": "Update PipelineRunLog",
 							"type": "SqlServerStoredProcedure",
 							"dependsOn": [],
 							"policy": {
@@ -213,7 +213,7 @@
 				}
 			},
 			{
-				"name": "Update Pipeline Failure -1",
+				"name": "Update PipelineRunLog -1",
 				"type": "SqlServerStoredProcedure",
 				"dependsOn": [
 					{
@@ -281,7 +281,7 @@
 				}
 			},
 			{
-				"name": "Update Pipeline Failure - 2",
+				"name": "Update PipelineRunLog -2",
 				"type": "SqlServerStoredProcedure",
 				"dependsOn": [
 					{
@@ -352,7 +352,7 @@
 		"parameters": {
 			"root": {
 				"type": "string",
-				"defaultValue": "raw/invoices/aws"
+				"defaultValue": "raw/invoices"
 			}
 		},
 		"annotations": [],
