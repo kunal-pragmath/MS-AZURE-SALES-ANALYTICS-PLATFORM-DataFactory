@@ -90,7 +90,7 @@
 								"value": "@pipeline().parameters.root",
 								"type": "Expression"
 							},
-							"wildcardFileName": "*.csv",
+							"wildcardFileName": "*.tsv",
 							"enablePartitionDiscovery": false
 						},
 						"formatSettings": {
@@ -116,7 +116,7 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "DataLake_Invoices_CSV",
+						"referenceName": "DataLake_Invoices_TSV",
 						"type": "DatasetReference",
 						"parameters": {
 							"root": {

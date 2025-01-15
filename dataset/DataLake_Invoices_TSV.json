@@ -1,5 +1,5 @@
 {
-	"name": "DataLake_Invoices_CSV",
+	"name": "DataLake_Invoices_TSV",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "AzureDataLakeStorage1",
