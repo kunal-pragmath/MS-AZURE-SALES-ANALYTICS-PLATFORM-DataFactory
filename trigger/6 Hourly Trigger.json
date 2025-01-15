@@ -3,14 +3,7 @@
 	"properties": {
 		"annotations": [],
 		"runtimeState": "Started",
-		"pipelines": [
-			{
-				"pipelineReference": {
-					"referenceName": "PL02-DataLakeToSQL-Invoices",
-					"type": "PipelineReference"
-				}
-			}
-		],
+		"pipelines": [],
 		"type": "ScheduleTrigger",
 		"typeProperties": {
 			"recurrence": {
