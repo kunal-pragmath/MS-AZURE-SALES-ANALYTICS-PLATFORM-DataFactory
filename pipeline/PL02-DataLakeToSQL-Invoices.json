@@ -171,7 +171,7 @@
 											"value": "@utcNow()",
 											"type": "Expression"
 										},
-										"type": "Datetime"
+										"type": "DateTime"
 									},
 									"ErrorMessage": {
 										"value": null,
@@ -184,19 +184,12 @@
 										},
 										"type": "String"
 									},
-									"PipelineRunId": {
-										"value": {
-											"value": "@pipeline().RunId",
-											"type": "Expression"
-										},
-										"type": "String"
-									},
 									"StartTime": {
 										"value": {
 											"value": "@pipeline().TriggerTime",
 											"type": "Expression"
 										},
-										"type": "Datetime"
+										"type": "DateTime"
 									},
 									"Status": {
 										"value": "Succeeded",
