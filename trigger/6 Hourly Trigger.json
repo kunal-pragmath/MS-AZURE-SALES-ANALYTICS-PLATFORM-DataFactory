@@ -8,6 +8,9 @@
 				"pipelineReference": {
 					"referenceName": "PL02-DataLakeToSQL-Invoices",
 					"type": "PipelineReference"
+				},
+				"parameters": {
+					"root": "raw/invoices"
 				}
 			}
 		],
